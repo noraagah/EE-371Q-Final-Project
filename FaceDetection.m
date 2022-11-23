@@ -12,8 +12,8 @@ function [Face_Presence, bbox] = FaceDetection(image)
     %Get bounding boxes of faces
     bbox = step(faceDetector, image);
     % Draw boxes around detected faces and display results
-    %I_faces = step(shapeInserter, image, int32(bbox));
-    %imshow(I_faces), title('Detected faces');
+    I_faces = step(shapeInserter, image, int32(bbox));
+    imshow(I_faces), title('Detected faces');
     %Return true if faces are present
     Face_Presence = ~(isempty(bbox)); %Line added to original code
 
