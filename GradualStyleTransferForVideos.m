@@ -3,7 +3,7 @@
 % scene content of a second image using a pretrained VGG-19 network.
 % 
 % Code adapted from: https://www.mathworks.com/help/images/neural-style-transfer-using-deep-learning.html
-clear all; close all;
+clear all; close all; tic;
 addpath(genpath("giftools"))
 % set(0,'DefaultFigureVisible','off'); % can toggle on/off as needed
 %% Load Data
@@ -70,7 +70,7 @@ dlnet = dlnetwork(lgraph);
 %% Preprocess Data
 % Resize the style image and content image to a smaller size for faster processing.
 
-imageSize = [384,512];
+imageSize = [512,256];
 styleImg = cell(size(styleImages));
 for img = 1 : size(styleImages, 2)
     styleImg{1,img} = imresize(styleImages{1,img}, imageSize);
@@ -191,7 +191,7 @@ end
 %%
 % Apply style transfer on each frame
 frameNum = 0;
-totalFrameNum = 50; % replace with contentVideo.NumFrames;
+totalFrameNum = 210; % replace with contentVideo.NumFrames;
 framesPerTransition = 10;
 % total frames in one transition = floor(totalFrameNum/size(styleImg,2))
 % frames within style transitions = floor(total frames in one
@@ -220,7 +220,7 @@ while hasFrame(contentVideo)
     frameNum = frameNum + 1;
     disp("Frame: " + string(frameNum));
 
-    if frameNum == 50 % delete - just for testing
+    if frameNum == 210 % delete - just for testing
         break
     end
 
@@ -251,8 +251,12 @@ while hasFrame(contentVideo)
     for idx = 1 : size(weightDistrib,2)
         % initialize the transfer image differently depending on the styles
         if transferInitialized == false
-            if idx == 1 && weightDistrib(idx) > 0
-                noiseRatio = 1-weightDistrib(idx);
+            if idx == 1 && weightDistrib(1) > 0.000001
+                if (1-weightDistrib(idx)) > 0.7
+                    noiseRatio = 0.7;
+                else
+                    noiseRatio = 1-weightDistrib(idx);
+                end
                 randImage = randi([-20,20],[imageSize 3]);
                 transferImage = noiseRatio.*randImage + (1-noiseRatio).*contentImg;
                 dlTransfer = dlarray(transferImage(:,:,:),"SSC");
@@ -263,6 +267,7 @@ while hasFrame(contentVideo)
                 dlTransfer = dlarray(transferImage(:,:,:),"SSC");
             end
             transferInitialized = true;
+            disp(noiseRatio);
         end
 
         if idx ~= 1 && weightDistrib(idx) > 0 
@@ -335,15 +340,12 @@ while hasFrame(contentVideo)
     %
     % Update the weight distribution
     if mod(frameNum, framesPerTransition) == 0
-        if (weightDistrib(startingImages(1)) - weightShift) >= 0 
+        if (weightDistrib(startingImages(1)) - weightShift) >= -0.000001
             weightDistrib(startingImages(1)) = weightDistrib(startingImages(1)) - weightShift;
             weightDistrib(startingImages(2)) = weightDistrib(startingImages(2)) + weightShift;
-            if weightDistrib(startingImages(1)) == 0
+            if weightDistrib(startingImages(1)) >= -0.000001 && weightDistrib(startingImages(1)) <= 0.000001 && startingImages(2) < size(weightDistrib,2) 
                 startingImages = startingImages + 1;
             end
-%         elseif startingImages(2) < size(weightDistrib,2) 
-%             weightDistrib(startingImages(1)) = 0;
-%             weightDistrib(startingImages(2)) = 1;
         end
         disp(weightDistrib)
     end
@@ -353,6 +355,7 @@ close(newVideo);
 
 %% Analyze and Save Results
 implay('styleVideo.avi');
+toc;
 
 %% Supporting Functions
 % Calculate Image Loss and Gradients

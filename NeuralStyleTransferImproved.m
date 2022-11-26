@@ -55,6 +55,15 @@ title("Labeled Image")
 %         'VerticalAlignment', 'middle');
 % end
 % hold off
+
+%% Segment the content image - test 3
+% uses active contour
+
+% mask = zeros(size(rgb2gray(contentImage)));
+% mask(25:end-25,25:end-25) = 1;
+% bw = activecontour(rgb2gray(contentImage),mask,10000);
+% imshow(bw)
+% title('Segmented Image, 10000 Iterations')
 %% Load Feature Extraction Network
 % In this example, you use a modified pretrained VGG-19 deep neural network 
 % to extract the features of the content and style image at various layers. These 
@@ -283,95 +292,111 @@ for iteration = 1:numIterations
     
     disp(iteration);
 end
-%% Regional Style Transfer - Does not Work 
-% styleTransferOptions.clusterFeatureLayerNames = "conv4_2";
-% styleTransferOptions.clusterFeatureLayerWeights = 1;
-% for cluster = 1:numClusters
-%     clusterMask = (L==cluster); % binary mask
-%     clusterImage = contentImg .* clusterMask;
-% 
-%     dlCluster = dlarray(clusterImage,"SSC");
-%     
-%     numClusterFeatureLayers = numel(styleTransferOptions.clusterFeatureLayerNames);
-%     clusterFeatures = cell(1,numClusterFeatureLayers);
-%     [clusterFeatures{:}] = forward(dlnet,dlCluster,Outputs=styleTransferOptions.clusterFeatureLayerNames);
-% 
-%     minimumLoss = inf;
-% 
-%     for iteration = 1:numIterations
-%         % Evaluate the transfer image gradients and state using dlfeval and the
-%         % imageGradients function listed at the end of the example
-%         [grad,losses] = dlfeval(@imageGradients,dlnet,dlTransfer,clusterFeatures,styleFeatures,styleTransferOptions);
-%         [dlTransfer,trailingAvg,trailingAvgSq] = adamupdate(dlTransfer,grad,trailingAvg,trailingAvgSq,iteration,learningRate);
-%       
-%         if losses.totalLoss < minimumLoss
-%             minimumLoss = losses.totalLoss;
-%             dlOutput = dlTransfer;        
-%         end   
-%         
-%         % Display the transfer image on the first iteration and after every 50
-%         % iterations. The postprocessing steps are described in the "Postprocess
-%         % Transfer Image for Display" section of this example
+%% Regional Style Transfer - 
+styleTransferOptions.clusterFeatureLayerNames = "conv4_2";
+styleTransferOptions.clusterFeatureLayerWeights = 1;
+transferImageFinal = uint8(zeros([imageSize 3]));
+for cluster = 1:numClusters
+    disp("Cluster: " + string(cluster));
+    clusterMask = repmat((L==cluster), [1,1,3]); % binary mask
+    clusterImage = contentImg .* clusterMask;
+
+    dlCluster = dlarray(clusterImage,"SSC");
+
+    noiseRatio = 0.7;
+    randImage = randi([-20,20],[imageSize 3]) .* clusterMask;
+    transferImagePart = noiseRatio.*randImage + (1-noiseRatio).*contentImg.*clusterMask;
+    dlTransfer = dlarray(transferImagePart,"SSC");
+    
+    numClusterFeatureLayers = numel(styleTransferOptions.clusterFeatureLayerNames);
+    clusterFeatures = cell(1,numClusterFeatureLayers);
+    [clusterFeatures{:}] = forward(dlnet,dlCluster,Outputs=styleTransferOptions.clusterFeatureLayerNames);
+
+    minimumLoss = inf;
+
+    for iteration = 1:numIterations
+        % Evaluate the transfer image gradients and state using dlfeval and the
+        % imageGradients function listed at the end of the example
+        [grad,losses] = dlfeval(@imageGradients,dlnet,dlTransfer,clusterFeatures,styleFeatures,styleTransferOptions);
+        [dlTransfer,trailingAvg,trailingAvgSq] = adamupdate(dlTransfer,grad,trailingAvg,trailingAvgSq,iteration,learningRate);
+      
+        if losses.totalLoss < minimumLoss
+            minimumLoss = losses.totalLoss;
+            dlOutput = dlTransfer;        
+        end   
+        
+        % Display the transfer image on the first iteration and after every 50
+        % iterations. The postprocessing steps are described in the "Postprocess
+        % Transfer Image for Display" section of this example
 %         if mod(iteration,50) == 0 || (iteration == 1)
+%             figure;
+%             transferImagePart = gather(extractdata(dlTransfer));
+%             transferImagePart = (transferImagePart + meanVggNet).*clusterMask;
+%             transferImagePart = uint8(transferImagePart);
+%             transferImagePart = imresize(transferImagePart,size(clusterImage,[1 2]));
 %             
-%             transferImage = gather(extractdata(dlTransfer));
-%             transferImage = transferImage + meanVggNet;
-%             transferImage = uint8(transferImage);
-%             transferImage = imresize(transferImage,size(clusterImage,[1 2]));
-%             
-%             image(transferImage)
+%             image(transferImagePart)
 %             title(["Cluster Transfer Image After Iteration ",num2str(iteration)])
 %             axis off image
 %             drawnow
 %         end   
-%         
-%         disp(iteration);
-%     end
-% 
-% end
+        
+    end
+
+    transferImagePart = gather(extractdata(dlOutput));
+    transferImagePart = (transferImagePart + meanVggNet).*clusterMask;
+    transferImagePart = uint8(transferImagePart);
+    transferImageFinal = transferImageFinal + transferImagePart;
+    figure;
+    title("Cluster: " + string(cluster));
+    hold on;
+    imshow(transferImageFinal);
+    hold off;
+
+end
 %% Postprocess Transfer Image for Display
 % Get the updated transfer image.
 
-transferImage = gather(extractdata(dlOutput));
-%% 
+% transferImage = gather(extractdata(dlOutput));
+%
 % Add the network-trained mean to the transfer image.
 
-transferImage = transferImage + meanVggNet;
-%% 
+% transferImage = transferImage + meanVggNet;
+%
 % Some pixel values can exceed the original range [0, 255] of the content and 
 % style image. You can clip the values to the range [0, 255] by converting the 
 % data type to |uint8|.
 
-transferImage = uint8(transferImage);
-%% 
+% transferImage = uint8(transferImage);
+%
 % Resize the transfer image to the original size of the content image.
 
-transferImage = imresize(transferImage,size(contentImage,[1 2]));
-%% 
+transferImageFinal = imresize(transferImageFinal,size(contentImage,[1 2]));
+% 
 % Display the content image, transfer image, and style image in a montage.
 
-imshow(imtile({contentImage,transferImage,styleImage}, ...
+imshow(imtile({contentImage,transferImageFinal,styleImage}, ...
     GridSize=[1 3],BackgroundColor="w"));
 
-saveas(gcf, "visionteam_orig_transfer_cluster.png");
+% saveas(gcf, "visionteam_orig_transfer_cluster.png");
 
 %% Color Matching
 % Test out different color matching methods and display
 
-transferImage_histadj = imhistmatch(transferImage, contentImage);
+transferImage_histadj = imhistmatch(transferImageFinal, contentImage);
 figure;
 imshow(transferImage_histadj);
-saveas(gcf, "visionteam_histadj_cluster.png");
+saveas(gcf, "visionteam_histadj_both.png");
 
-transferImage_histavg = imhistmatch(transferImage, .5*contentImage + .5*transferImage);
-figure;
-imshow(transferImage_histavg);
-saveas(gcf, "visionteam_histavg_cluster.png")
+% transferImage_histavg = imhistmatch(transferImageFinal, .5*contentImage + .5*uint8(styleImg));
+% figure;
+% imshow(transferImage_histavg);
+% saveas(gcf, "visionteam_histavg_cluster_reg.png")
 
-transferImage_histstyle = imhistmatch(transferImage, styleImage);
+transferImage_histstyle = imhistmatch(transferImageFinal, styleImage);
 figure;
 imshow(transferImage_histstyle);
-saveas(gcf, "visionteam_histstyle_cluster.png")
+saveas(gcf, "visionteam_histstyle_both.png")
 %% Supporting Functions
 % Calculate Image Loss and Gradients
 % The |imageGradients| helper function returns the loss and gradients using 
