@@ -5,13 +5,13 @@
 % Code adapted from: https://www.mathworks.com/help/images/neural-style-transfer-using-deep-learning.html
 clear all; close all;
 addpath(genpath("giftools"))
-set(0,'DefaultFigureVisible','off'); % can toggle on/off as needed
+% set(0,'DefaultFigureVisible','off'); % can toggle on/off as needed
 %% Load Data
 % Load the style image and content image. This example uses the distinctive 
 % Van Gogh painting "Starry Night" as the style image and a photograph of a lighthouse 
 % as the content image.
 
-styleImage = im2double(imread("starryNight.jpg"));
+styleImage = im2double(imread("thescream.jpg"));
 gifImage = gifread('practice-gif.gif');
 gifImage = gifImage(:,:,1:3,:); % for some reason, adds extra dim to color dim
 % [gifImage, cmap] = imread('practice-gif.gif', 'gif', 'Frames','all');
@@ -95,9 +95,7 @@ gifImg = rescale(single(gifImg),0,255) - meanVggNet;
 % convergence, this example initializes the output transfer image as a weighted 
 % combination of the content image and a white noise image.
 
-noiseRatio = 0.7;
-randImage = randi([-20,20],[imageSize 3]);
-transferImage = noiseRatio.*randImage + (1-noiseRatio).*gifImg;
+% done in the loop
 %% Define Loss Functions and Style Transfer Parameters
 % Content Loss
 % The objective of content loss is to make the features of the transfer image 
@@ -175,8 +173,13 @@ trailingAvgSq = [];
 % Convert the style image, content image, and transfer image to <docid:nnet_ref#mw_bc7bf07e-0207-40d7-8568-5bdd002c6390 
 % |dlarray|> objects with underlying type |single| and dimension labels "|SSC"|.
 
+transferImage = zeros(size(gifImage));
 for frame = 1 : size(gifImage, 4)
     disp(frame);
+    noiseRatio = 0.7;
+    randImage = randi([-20,20],[imageSize 3]);
+    transferImage(:,:,:,frame) = noiseRatio.*randImage + (1-noiseRatio).*gifImg(:,:,:,frame);
+
     dlStyle = dlarray(styleImg,"SSC");
     dlContent = dlarray(gifImg(:,:,:,frame),"SSC");
     dlTransfer = dlarray(transferImage(:,:,:,frame),"SSC");
@@ -253,6 +256,7 @@ for frame = 1 : size(gifImage, 4)
     % Add the network-trained mean to the transfer image.
     
     transferImage(:,:,:,frame) = transferImage(:,:,:,frame) + meanVggNet;
+
     %
     % Some pixel values can exceed the original range [0, 255] of the content and 
     % style image. You can clip the values to the range [0, 255] by converting the 
@@ -266,10 +270,13 @@ for frame = 1 : size(gifImage, 4)
     % 
     % Display the content image, transfer image, and style image in a montage.
     
+    figure;
     imshow(imtile({gifImage(:,:,:,frame),transferImage(:,:,:,frame) ./ 255,styleImage}, ...
         GridSize=[1 3],BackgroundColor="w"));
 end
 transferImage = uint8(transferImage);
+%%
+transferImage = imhistmatch(transferImage, styleImage);
 
 %% Analyze and Save Results
 implay(transferImage);

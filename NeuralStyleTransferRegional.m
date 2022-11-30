@@ -18,7 +18,7 @@
 % as the content image.
 
 styleImage = im2double(imread("starryNight.jpg"));
-contentImage = imread("visionteam.jpg");
+contentImage = imread("Face2.jpg");
 %% 
 % Display the style image and content image as a montage.
 
@@ -209,14 +209,14 @@ styleTransferOptions.beta = 1e3;
 % Train for 2500 iterations. 
 
 %numIterations = 2500;
-numIterations = 100;
+numIterations = 5;
 %% 
 % Specify options for Adam optimization. Set the learning rate to 2 for faster 
 % convergence. You can experiment with the learning rate by observing your output 
 % image and losses. Initialize the trailing average gradient and trailing average 
 % gradient-square decay rates with |[]|.
 
-learningRate = 2;
+learningRate = 4;
 trailingAvg = [];
 trailingAvgSq = [];
 %% Train the Network
@@ -303,7 +303,7 @@ for cluster = 1:numClusters
 
     dlCluster = dlarray(clusterImage,"SSC");
 
-    noiseRatio = 0.7;
+    noiseRatio = 0.85;
     randImage = randi([-20,20],[imageSize 3]) .* clusterMask;
     transferImagePart = noiseRatio.*randImage + (1-noiseRatio).*contentImg.*clusterMask;
     dlTransfer = dlarray(transferImagePart,"SSC");

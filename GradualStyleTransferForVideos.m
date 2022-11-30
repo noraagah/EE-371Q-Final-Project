@@ -11,11 +11,12 @@ addpath(genpath("giftools"))
 % Van Gogh painting "Starry Night" as the style image and a photograph of a lighthouse 
 % as the content image.
 
-numStyles = 2;
+numStyles = 3;
 styleImages = cell(1,numStyles);
-styleImages{1,1} = im2double(imread("starryNight.jpg"));
-styleImages{1,2} = im2double(imread("thescream.jpg"));
-contentVideo = VideoReader('Dog.MOV');
+styleImages{1,1} = im2double(imread("georgesbraque.jpg"));
+styleImages{1,2} = im2double(imread("starryNight.jpg"));
+styleImages{1,3} = im2double(imread("degas-landscape.jpg"));
+contentVideo = VideoReader('Dog2.MOV');
 %% 
 % Display the style image and content image as a montage.
 figure;
@@ -23,7 +24,7 @@ subplot(1,numStyles,1);
 imshow(styleImages{1,1});
 subplot(1,numStyles,2);
 imshow(styleImages{1,2});
-implay('Dog.MOV');
+implay('Dog2.MOV');
 %% Load Feature Extraction Network
 % In this example, you use a modified pretrained VGG-19 deep neural network 
 % to extract the features of the content and style image at various layers. These 
@@ -70,7 +71,7 @@ dlnet = dlnetwork(lgraph);
 %% Preprocess Data
 % Resize the style image and content image to a smaller size for faster processing.
 
-imageSize = [512,256];
+imageSize = [272,480];
 styleImg = cell(size(styleImages));
 for img = 1 : size(styleImages, 2)
     styleImg{1,img} = imresize(styleImages{1,img}, imageSize);
@@ -191,7 +192,7 @@ end
 %%
 % Apply style transfer on each frame
 frameNum = 0;
-totalFrameNum = 210; % replace with contentVideo.NumFrames;
+totalFrameNum = contentVideo.NumFrames;
 framesPerTransition = 10;
 % total frames in one transition = floor(totalFrameNum/size(styleImg,2))
 % frames within style transitions = floor(total frames in one
@@ -200,7 +201,9 @@ framesPerTransition = 10;
 % consistent so we'll stick with 10 per within style transition
 % for 50 and 2 styles, it'll be [1 0 0], [.5 .5 0], [0 1 0], [0 .5 .5], [0 0 1]
 % 2/[(50 - 10)/10] gives the weight shifts
+composites100 = [0.001, 0.01, 0.02, 0.025, 0.04, 0.05, 0.1, 0.2, 0.25, 0.4, 0.5]; % needs to add up to 1 eventually
 weightShift = size(styleImg, 2)/((totalFrameNum-10)/framesPerTransition);
+weightShift = interp1(composites100,composites100,weightShift,'nearest');
 weightDistrib = cat(2, 1, zeros(1,size(styleImg,2))); %[content styles]
 startingImages = [1 2];
 
@@ -220,9 +223,9 @@ while hasFrame(contentVideo)
     frameNum = frameNum + 1;
     disp("Frame: " + string(frameNum));
 
-    if frameNum == 210 % delete - just for testing
-        break
-    end
+%     if frameNum == 210 % delete - just for testing
+%         break
+%     end
 
     % resize the content image
     contentImg = imresize(frame, imageSize);
@@ -325,7 +328,7 @@ while hasFrame(contentVideo)
     if mod(frameNum, framesPerTransition) == 0
         figure;
         imshow(imtile({frame(:,:,:),transferImage(:,:,:) ./ 255}, ...
-            GridSize=[1 3],BackgroundColor="w"));
+            GridSize=[1 2],BackgroundColor="w"));
     end
 
     transferImage = uint8(transferImage);
@@ -356,6 +359,21 @@ close(newVideo);
 %% Analyze and Save Results
 implay('styleVideo.avi');
 toc;
+
+%% 
+% initialize video result
+contentVideo = VideoReader('dog-running-three styles.avi');
+newVideoBright = VideoWriter('styleVideoBrightened.avi');
+newVideoBright.FrameRate = contentVideo.FrameRate;
+open(newVideoBright);
+
+while hasFrame(contentVideo)
+    frame = readFrame(contentVideo);
+    newframe = imlocalbrighten(frame, 0.5);
+    writeVideo(newVideoBright, newframe);
+end
+close(newVideoBright);
+
 
 %% Supporting Functions
 % Calculate Image Loss and Gradients
