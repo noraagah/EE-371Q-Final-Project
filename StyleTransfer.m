@@ -156,7 +156,7 @@ function transferImage = StyleTransfer(contentImage, styleImage)
     % Train for 2500 iterations. 
     
     %numIterations = 2500;
-    numIterations = 500;
+    numIterations = 200;
     %% 
     % Specify options for Adam optimization. Set the learning rate to 2 for faster 
     % convergence. You can experiment with the learning rate by observing your output 
