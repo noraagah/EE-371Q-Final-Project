@@ -25,7 +25,7 @@ contentImage = imread("Face2.jpg");
 imshow(imtile({styleImage,contentImage},BackgroundColor="w"));
 %% Segment the content image - test
 
-numClusters = 10;
+numClusters = 5;
 [L,Centers] = imsegkmeans(contentImage,numClusters); % not sure how many clusters yet
 B = labeloverlay(contentImage,L);
 imshow(B)
@@ -209,14 +209,14 @@ styleTransferOptions.beta = 1e3;
 % Train for 2500 iterations. 
 
 %numIterations = 2500;
-numIterations = 5;
+numIterations = 200;
 %% 
 % Specify options for Adam optimization. Set the learning rate to 2 for faster 
 % convergence. You can experiment with the learning rate by observing your output 
 % image and losses. Initialize the trailing average gradient and trailing average 
 % gradient-square decay rates with |[]|.
 
-learningRate = 4;
+learningRate = 2;
 trailingAvg = [];
 trailingAvgSq = [];
 %% Train the Network
@@ -383,10 +383,10 @@ imshow(imtile({contentImage,transferImageFinal,styleImage}, ...
 %% Color Matching
 % Test out different color matching methods and display
 
-transferImage_histadj = imhistmatch(transferImageFinal, contentImage);
-figure;
-imshow(transferImage_histadj);
-saveas(gcf, "visionteam_histadj_both.png");
+% transferImage_histadj = imhistmatch(transferImageFinal, contentImage);
+% figure;
+% imshow(transferImage_histadj);
+% saveas(gcf, "visionteam_histadj_both.png");
 
 % transferImage_histavg = imhistmatch(transferImageFinal, .5*contentImage + .5*uint8(styleImg));
 % figure;
@@ -396,7 +396,7 @@ saveas(gcf, "visionteam_histadj_both.png");
 transferImage_histstyle = imhistmatch(transferImageFinal, styleImage);
 figure;
 imshow(transferImage_histstyle);
-saveas(gcf, "visionteam_histstyle_both.png")
+saveas(gcf, "face_reg.png")
 %% Supporting Functions
 % Calculate Image Loss and Gradients
 % The |imageGradients| helper function returns the loss and gradients using 

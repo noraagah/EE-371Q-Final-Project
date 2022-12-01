@@ -17,8 +17,8 @@
 % Van Gogh painting "Starry Night" as the style image and a photograph of a lighthouse 
 % as the content image.
 
-styleImage = im2double(imread("degas-landscape.jpg"));
-contentImage = imread("dog-running.png");
+styleImage = im2double(imread("jacksonpollock.jpg"));
+contentImage = imread("flower.jpg");
 %% 
 % Display the style image and content image as a montage.
 
@@ -386,17 +386,17 @@ imshow(imtile({contentImage,transferImage,styleImage}, ...
 transferImage_histadj = imhistmatch(transferImage, contentImage);
 figure;
 imshow(transferImage_histadj);
-% saveas(gcf, "dogbowtie_histadj_firstpic.png");
+saveas(gcf, "flower_histadj.png");
 
-% transferImage_histavg = imhistmatch(transferImageFinal, .5*contentImage + .5*uint8(styleImg));
-% figure;
-% imshow(transferImage_histavg);
-% saveas(gcf, "visionteam_histavg_cluster_reg.png")
+transferImage_histavg = imhistmatch(transferImage, .5*uint8(contentImg) + .5*uint8(styleImg));
+figure;
+imshow(transferImage_histavg);
+saveas(gcf, "flower_histavg.png")
 
 transferImage_histstyle = imhistmatch(transferImage, styleImage);
 figure;
 imshow(transferImage_histstyle);
-% saveas(gcf, "dogbowtie_histstyle_firstpic.png")
+saveas(gcf, "flower_histstyle_pollock.png")
 %% Supporting Functions
 % Calculate Image Loss and Gradients
 % The |imageGradients| helper function returns the loss and gradients using 
